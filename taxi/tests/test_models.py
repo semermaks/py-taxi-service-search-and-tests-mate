@@ -1,72 +1,66 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.urls import reverse
 
-from taxi.models import Manufacturer, Car
+from taxi.models import Car, Manufacturer
 
 
-class ManufacturerModelTest(TestCase):
-    def setUp(self):
-        self.manufacturer = Manufacturer.objects.create(
-            name="test_name",
-            country="test_country"
+class ModelsTests(TestCase):
+
+    def test_driver_str(self):
+        driver = get_user_model().objects.create_user(
+            username="test_driver",
+            first_name="test",
+            last_name="driver",
         )
+        self.assertEqual(
+            str(driver),
+            f"{driver.username} ({driver.first_name} {driver.last_name})"
+        )
+
+    def test_car_str(self) -> None:
+        manufacturer = Manufacturer.objects.create(name="Mitsubishi")
+        car = Car.objects.create(model="Lancer X", manufacturer=manufacturer)
+        self.assertEqual(str(car.model), car.model)
 
     def test_manufacturer_str(self):
-        self.assertEqual(
-            str(self.manufacturer),
-            f"{self.manufacturer.name} {self.manufacturer.country}"
+        manufacturer = Manufacturer.objects.create(
+            name="Mitsubishi",
+            country="Japane"
         )
+        self.assertEqual(
+            str(manufacturer),
+            f"{manufacturer.name} {manufacturer.country}"
+        )
+
+    def test_create_driver_with_license_number(self) -> None:
+        username = "test_driver"
+        password = "driver1987"
+        license_number = "QWE12345"
+
+        driver = get_user_model().objects.create_user(
+            username=username,
+            password=password,
+            license_number=license_number,
+        )
+        self.assertTrue(driver)
+        self.assertEqual(driver.username, username)
+        self.assertTrue(driver.check_password(password))
+        self.assertEqual(driver.license_number, license_number)
 
 
 class DriverModelTest(TestCase):
-    USERNAME = "test_username"
-    PASSWORD = "test1234"
-    FIRST_NAME = "test_first"
-    LAST_NAME = "test_last"
-    LICENSE_NUMBER = "ABC12345"
-
-    def setUp(self):
-        self.driver = get_user_model().objects.create_user(
-            username=self.USERNAME,
-            password=self.PASSWORD,
-            first_name=self.FIRST_NAME,
-            last_name=self.LAST_NAME,
-            license_number=self.LICENSE_NUMBER,
+    def setUp(self) -> None:
+        self.user = get_user_model().objects.create_user(
+            username="test_driver",
+            password="driver1987",
+            license_number="QWE12345",
         )
-
-    def test_str(self):
-
-        self.assertEqual(
-            str(self.driver),
-            f"{self.driver.username} ({self.driver.first_name} "
-            f"{self.driver.last_name})"
-        )
-
-    def test_create_with_license_number(self):
-        self.assertEqual(self.driver.license_number, self.LICENSE_NUMBER)
-        self.assertTrue(self.driver.check_password(self.PASSWORD))
-        self.assertEqual(self.driver.username, self.USERNAME)
 
     def test_get_absolute_url(self):
-        self.assertEqual(
-            self.driver.get_absolute_url(),
-            f"/drivers/{self.driver.pk}/"
+        expected_url = reverse(
+            "taxi:driver-detail",
+            kwargs={"pk": self.user.pk}
         )
-
-
-class CarModelTest(TestCase):
-    def setUp(self):
-        manufacturer = Manufacturer.objects.create(name="test")
-        driver = get_user_model().objects.create(
-            username="test",
-            password="test1234",
-            license_number="ABC12345",
-        )
-        self.car = Car.objects.create(
-            model="test",
-            manufacturer=manufacturer,
-        )
-        self.car.drivers.add(driver)
-
-    def test_car_str(self):
-        self.assertEqual(str(self.car), self.car.model)
+        actual_url = self.user.get_absolute_url()
+        self.assertEqual(expected_url, actual_url)
